@@ -70,7 +70,7 @@ if __name__ == "__main__":
     commands.add_argument('--device-lock', help="Lock the device", action="store_true")
     commands.add_argument('--device-unlock', type=int, help="Unlock the device", metavar=("PHRASE"))
     commands.add_argument('--set-phrase', type=int, help="Set phrase", metavar=("PHRASE"))
-    commands.add_argument('--operating-mode', type=str, help="Change operating mode: DEVELOPMENT | PROGRAM | PRODUCTION", metavar=("OPERATING MODE"))
+    commands.add_argument('--operating-mode', type=str, help="Change operating mode: DEVELOPMENT | PROGRAMMING | PRODUCTION", metavar=("OPERATING MODE"))
     commands.add_argument('--factory-reset', help="Factory reset", action="store_true")
     commands.add_argument('--led-conf-set', help="Configure the led: ALWAYS_ON | ALWAYS_OFF | BLINK_ON_ZENCODE | BLINK_ON_SERIAL", metavar=("CONFIG"))
     commands.add_argument('--version', help="Get the version", action="store_true")
@@ -133,10 +133,22 @@ if __name__ == "__main__":
         exit_status(status, args.no_interactive)
 
     elif args.operating_mode:
+        
+        if args.operating_mode == "DEVELOPMENT":
+            conf = DEVELOPMENT
+        elif args.operating_mode == "PROGRAMMING":
+            conf = PROGRAMMING
+        elif args.operating_mode == "PRODUCTION":
+            conf = PRODUCTION
+        else:
+            if args.no_interactive:
+                sys.stderr.write("%s parameter not allowed" % (args.operating_mode))
+            sys.exit(1)
+
         if args.no_interactive and not request_for_confirmation("Are you sure to change the operating mode?"):
             sys.exit(0)
 
-        status = mp1.operating_mode(DEVELOPMENT)
+        status = mp1.operating_mode(conf)
 
         exit_status(status, args.no_interactive)
 
