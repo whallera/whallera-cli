@@ -1,3 +1,8 @@
+from msilib.schema import Error
+from socket import timeout
+import sys
+import serial 
+import time 
 
 
 #Serial Start & Stop
@@ -28,7 +33,7 @@ PRODUCTION = 0xff
 LED_ALWAYS_OFF = 0x00
 LED_ALWAYS_ON = 0x01
 LED_BLINK_ON_ZENCODE = 0x02
-LEB_BLINK_ON_SERIAL = 0x03
+LED_BLINK_ON_SERIAL = 0x03
 
 #Status codes
 OK=0x00
@@ -40,6 +45,13 @@ BANK_OVERFLOW=0x20
 #Zenroom Exit codes
 OK=0x00
 ERROR=0x01
+
+#Just for debugs
+DUMMY_TTY = "dummy"
+
+BAUDRATE = 115200 
+SERIAL_TIMEOUT = 10 
+SERIAL_WAIT = 0.1
 
 def calc_checksum(packet):
     checksum = 0
@@ -67,22 +79,46 @@ def int32(i):
 
 class MP1:
 
-    def __init__(self):
+    def __init__(self, interface):
 
-        #connect to serial
+        self.interface = interface   
+        
+        if self.interface != DUMMY_TTY:
+            self.serial = serial.Serial(self.interface, baudrate=BAUDRATE)
+            if not self.serial.is_open:
+                self.serial.open()
 
-        pass 
+    #This function returns False when no data arrives in the timeout, 
+    # True if it exits before the timeout
 
-    
-
+    def _wait_serial(self, timeout):
+        while not self.serial.in_waiting and timeout > time.time():
+            time.sleep(SERIAL_WAIT)
+        if timeout > time.time():
+            return True 
+        return False 
 
     def _read_serial(self):
 
-        stream = concatenate([
-            STARTBYTE,
-            b'\x01\x00\x23\x00\x22',
-            STOPBYTE
-        ]) 
+        if self.interface == DUMMY_TTY:
+            stream = concatenate([
+                STARTBYTE,
+                b'\x01\x00\x23\x00\x22',
+                STOPBYTE
+            ]) 
+            sys.stdout.write('RX: '+str(stream)+'\n')
+
+        else:
+
+            stream = b''
+            timeout = time.time() + SERIAL_TIMEOUT
+
+            if not self._wait_serial(timeout):
+                raise Exception("Serial Timeout, check connection")
+
+            while self.serial.in_waiting:
+                stream += self.serial.read()
+                #self._wait_serial(timeout)
 
         self.rx_stream = stream 
 
@@ -92,12 +128,12 @@ class MP1:
         stopbyte = int8(stream[-1])
 
         if startbyte != STARTBYTE or stopbyte != STOPBYTE:
-            raise Exception("Incomplete message")
+            raise Exception("Incomplete message: "+str(stream))
 
         if checksum == calc_checksum(data):
             return data 
         else:
-            raise Exception("Checksum error")
+            raise Exception("Checksum error: "+str(stream))
 
 
     def _write_serial(self, cmd, msg):
@@ -112,6 +148,11 @@ class MP1:
         checksum = int8(calc_checksum(write_buf)) 
         self.tx_stream = concatenate([write_buf, checksum])
         
+        if self.interface == DUMMY_TTY:
+            sys.stdout.write('TX: '+str(self.tx_stream)+'\n')
+        else:
+            self.serial.write(self.tx_stream)
+
     def _write_read_mp1(self, cmd, msg = b''):
 
         self._write_serial(cmd, msg)

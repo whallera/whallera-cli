@@ -2,6 +2,11 @@ import sys
 import glob
 import serial
 
+def tty_name():
+    if sys.platform.startswith('win'):
+        return "COM"
+    else:
+        return "tty"
 
 def serial_ports():
     """ Lists serial port names
