@@ -1,4 +1,3 @@
-from msilib.schema import Error
 from socket import timeout
 import sys
 import serial 
