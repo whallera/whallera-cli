@@ -1,9 +1,12 @@
-#Commands
-from tabnanny import check
 
+
+#Serial Start & Stop
 STARTBYTE = b'\xaa'
 STOPBYTE = b'\x55'
 
+ENDIANESS = 'little'
+
+#Commands
 READ_BANK=0x10
 WRITE_BANK=0x11
 DEVICE_LOCKED=0x20
@@ -45,6 +48,23 @@ def calc_checksum(packet):
 
     return checksum
 
+def concatenate(parts):
+
+    buffer = b''
+    for part in parts:
+        buffer += part 
+    
+    return buffer
+
+def int8(i):
+    return i.to_bytes(1, ENDIANESS)
+
+def int16(i):
+    return i.to_bytes(2, ENDIANESS)
+
+def int32(i):
+    return i.to_bytes(4, ENDIANESS)
+
 class MP1:
 
     def __init__(self):
@@ -53,16 +73,23 @@ class MP1:
 
         pass 
 
+    
+
 
     def _read_serial(self):
 
-        stream = STARTBYTE + b'\x01\x00\x23\x00\x22' + STOPBYTE
+        stream = concatenate([
+            STARTBYTE,
+            b'\x01\x00\x23\x00\x22',
+            STOPBYTE
+        ]) 
 
-        
-        startbyte = stream[0].to_bytes(1, 'little')
+        self.rx_stream = stream 
+
+        startbyte = int8(stream[0])
         data = stream[1:-2]
         checksum = stream[-2]
-        stopbyte = stream[-1].to_bytes(1, 'little')
+        stopbyte = int8(stream[-1])
 
         if startbyte != STARTBYTE or stopbyte != STOPBYTE:
             raise Exception("Incomplete message")
@@ -74,9 +101,16 @@ class MP1:
 
 
     def _write_serial(self, cmd, msg):
-        write_buf = STARTBYTE + cmd.to_bytes(1, 'little') + msg + STOPBYTE
-        checksum = calc_checksum(write_buf).to_bytes(1, 'little') 
-        print(write_buf + checksum)
+
+        write_buf = concatenate([
+            STARTBYTE,
+            int8(cmd),
+            msg,
+            STOPBYTE
+        ])
+
+        checksum = int8(calc_checksum(write_buf)) 
+        self.tx_stream = concatenate([write_buf, checksum])
         
     def _write_read_mp1(self, cmd, msg = b''):
 
@@ -90,7 +124,7 @@ class MP1:
     
     def read_bank(self, bank_id):
 
-        write_buf = bank_id.to_bytes(1, 'little')
+        write_buf = int8(bank_id)
         content, status = self._write_read_mp1(READ_BANK, write_buf)
         length = int.from_bytes(content[0:2], 'little')
         bank_content = content[2: length+2].decode('ascii')
@@ -98,7 +132,11 @@ class MP1:
         return bank_content, status 
 
     def write_bank(self, bank_id, content):
-        write_buf = bank_id.to_bytes(1, 'little') + len(content).to_bytes(2, 'little') + bytearray(content.encode('ascii'))
+        write_buf = concatenate([
+            int8(bank_id),
+            int16(len(content)),
+            bytearray(content.encode('ascii'))
+        ])
 
         content, status = self._write_read_mp1(WRITE_BANK, write_buf)
 
@@ -113,19 +151,19 @@ class MP1:
         return status 
 
     def device_unlock(self, phrase):
-        write_buf = phrase.to_bytes(4, 'little')
+        write_buf = int32(phrase)
 
         content, status = self._write_read_mp1(DEVICE_UNLOCK, write_buf)
         remaining_attempts = content[0]
         return remaining_attempts, status 
 
     def set_phrase(self, phrase):
-        write_buf = phrase.to_bytes(4, 'little')
+        write_buf = int32(phrase)
         content, status = self._write_read_mp1(SET_PHRASE, write_buf)
         return status 
 
     def operating_mode(self, mode):
-        write_buf = mode.to_bytes(1, 'little')
+        write_buf = int8(mode)
         content, status = self._write_read_mp1(OPERATING_MODE, write_buf)
         return status 
 
@@ -135,7 +173,7 @@ class MP1:
 
     def led_conf_set(self, conf):
 
-        write_buf = conf.to_bytes(1, 'little')
+        write_buf = int8(conf)
         content, status = self._write_read_mp1(LED_CONF_SET, write_buf)
         return status  
 
@@ -150,8 +188,16 @@ class MP1:
         return UDID, firmware_version, zenroom_version, status 
 
     def exec_zencode(self, script_bank_id, keys_bank_id, data_bank_id, stdout_bank_id, stderr_bank_id):
-        write_buf = script_bank_id.to_bytes(1, 'little') + keys_bank_id.to_bytes(1, 'little') + data_bank_id.to_bytes(1, 'little') + stdout_bank_id.to_bytes(1, 'little') + stderr_bank_id.to_bytes(1, 'little')
+        write_buf = concatenate([
+            int8(script_bank_id),
+            int8(keys_bank_id),
+            int8(data_bank_id),
+            int8(stdout_bank_id),
+            int8(stderr_bank_id)
+        ])
+
         content, status = self._write_read_mp1(EXEC_ZENCODE, write_buf)
+
         zenroom_exit_code = content[0] 
 
         return zenroom_exit_code, status 
