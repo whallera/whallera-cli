@@ -1,8 +1,6 @@
 import argparse
-from ast import parse 
 import re
 import sys
-from typing import KeysView 
 
 from lib.mp1 import * 
 from lib.discovery import discovery, tty_name
