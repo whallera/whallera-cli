@@ -83,10 +83,17 @@ if __name__ == "__main__":
         sys.exit(0)
 
     if not args.interface:
-        print("error: missing arguments: --interface")
-        sys.exit(1)
+        #Pick the first discoverable interface
+        d = discovery()
+        if len(d) > 0:
+            interface = d[0]
+        else:
+            print("error: Connect your Whallera or specify it using --interface")
+            sys.exit(1)
+    else:
+        interface = args.interface
 
-    mp1 = MP1(args.interface)
+    mp1 = MP1(interface)
 
     if args.read_bank:
         bank_id = parse_bank_id(args.read_bank)
@@ -176,6 +183,11 @@ if __name__ == "__main__":
             
 
         status = mp1.led_conf_set(conf)
+
+        exit_status(status, args.no_interactive)
+
+    elif args.version:
+        status = mp1.version()
 
         exit_status(status, args.no_interactive)
 
