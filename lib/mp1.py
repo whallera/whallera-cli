@@ -22,6 +22,7 @@ FACTORY_RESET=0x2f
 LED_CONF_SET=0x30
 VERSION=0x3f
 EXEC_ZENCODE=0x40
+EXEC_ZENCODE_STATUS=0x41
 
 #Operating modes
 DEVELOPMENT = 0x00
@@ -40,6 +41,7 @@ CHECKSUM_ERROR=0x01
 DEVICE_LOCKED=0x11
 BANK_LOCKED=0x12
 BANK_OVERFLOW=0x20
+WAIT=0x33
 
 #Zenroom Exit codes
 OK=0x00
@@ -238,9 +240,16 @@ class MP1:
 
         content, status = self._write_read_mp1(EXEC_ZENCODE, write_buf)
 
+        return status 
+
+    def exec_zencode_status(self):
+
+        content, status = self._write_read_mp1(EXEC_ZENCODE_STATUS)
+
         zenroom_exit_code = content[0] 
 
         return zenroom_exit_code, status 
+
 
 
 

@@ -68,6 +68,10 @@ def test_version():
     
 def test_exec_zencode():
     mp1 = MP1(DUMMY_TTY)
-    zenroom_exit_code, status  = mp1.exec_zencode(0x01, 0x02, 0x03, 0x04, 0x05)
+    status  = mp1.exec_zencode(0x01, 0x02, 0x03, 0x04, 0x05)
     assert mp1.tx_stream == b'\xaa@\x01\x02\x03\x04\x05U\xbe'
     
+def test_exec_zencode_status():
+    mp1 = MP1(DUMMY_TTY)
+    zenroom_exit_code, status  = mp1.exec_zencode_status()
+    assert mp1.tx_stream == b'\xaaAU\xbe'

@@ -73,6 +73,7 @@ if __name__ == "__main__":
     commands.add_argument('--led-conf-set', help="Configure the led: ALWAYS_ON | ALWAYS_OFF | BLINK_ON_ZENCODE | BLINK_ON_SERIAL", metavar=("CONFIG"))
     commands.add_argument('--version', help="Get the version", action="store_true")
     commands.add_argument('--exec-zencode', nargs=5, help="Execute zencode", metavar=("SCRIPT_BANK", "KEYS_BANK", "DATA_BANK", "STDOUT_BANK", "STDERR_BANK"))
+    commands.add_argument('--exec-zencode-status', help="Get the execution status", action="store_true")
     
     args = parser.parse_args()
 
@@ -185,7 +186,7 @@ if __name__ == "__main__":
         exit_status(status, args.no_interactive)
 
     elif args.version:
-        status = mp1.version()
+        UDID, firmware_version, zenroom_version, status = mp1.version()
 
         exit_status(status, args.no_interactive)
 
@@ -196,13 +197,19 @@ if __name__ == "__main__":
         stdout_bank_id = parse_bank_id(args.exec_zencode[3]) 
         stderr_bank_id = parse_bank_id(args.exec_zencode[4])
 
-        zenroom_exit_code, status  = mp1.exec_zencode(script_bank_id, keys_bank_id, data_bank_id, stdout_bank_id, stderr_bank_id)
+        status  = mp1.exec_zencode(script_bank_id, keys_bank_id, data_bank_id, stdout_bank_id, stderr_bank_id)
+
+        exit_status(status, args.no_interactive)
+    
+    elif args.exec_zencode_status:
+
+        zenroom_exit_code, status  = mp1.exec_zencode_status()
 
         if args.no_interactive and zenroom_exit_code:
             sys.stdout.write("Zenroom failed with exid code %i\n" % (zenroom_exit_code))
 
         exit_status(status, args.no_interactive)
-    
+
     else:
         sys.stderr.write("type -h for help!")
         sys.exit(0)
